@@ -98,4 +98,5 @@ std::string ArbolCod::decodificacion(std::string fraseCod){
 	
 	return fraseDecod;
     }
+
 }
