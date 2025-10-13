@@ -6,6 +6,8 @@
 #include "Sistema.h"
 #include "ArbolCod.h" // para poder usar la implementación del arbol de codificación
 #include "NodoCod.h"
+#include <cstdint> 
+#include <cmath>
 
 
 // obtener comandos
@@ -459,10 +461,147 @@ for (int j = 0; j < (int)bits.size(); j += 8) {
 
 
 //COMANDO DECODIFICAR
-void Sistema :: decodificar(std::string nombre_archivo){
+void Sistema:: decodificar(std::string nombre_archivo) {
+    // Intentar abrir el archivo .fabin en binario
+    std::ifstream fin(nombre_archivo, std::ios::binary);
+    if (!fin.is_open()) {
+        std::cout << "No se pueden cargar las secuencias desde " << nombre_archivo << "." << std::endl;
+        return;
+    }
 
-  std::cout<<"Exito decodificar " << nombre_archivo << "\n";
+    try {
+        // Leer n (uint16_t)
+        uint16_t n = 0;
+        fin.read(reinterpret_cast<char*>(&n), sizeof(uint16_t));
+        if (!fin) throw std::runtime_error("Formato invalido (n).");
 
+        // Leer ci (1 byte) y fi (uint64_t) n veces -> construir tabla de frecuencias
+        std::map<char, uint64_t> freq64;
+        for (uint16_t i = 0; i < n; ++i) {
+            char ci;
+            uint64_t fi = 0;
+            fin.read(&ci, 1);
+            fin.read(reinterpret_cast<char*>(&fi), sizeof(uint64_t));
+            if (!fin) throw std::runtime_error("Formato invalido (ci/fi).");
+            freq64[ci] = fi;
+        }
+
+        // Convertir a map<char,int> si ArbolCod lo requiere (Huffman firma: map<char,int>&)
+        std::map<char,int> freq_for_tree;
+        for (const auto &p : freq64) {
+            // cast puede truncar si la frecuencia > INT_MAX; ajustar según necesidad
+            freq_for_tree[p.first] = static_cast<int>(p.second);
+        }
+
+        // Leer ns (uint32_t): número de secuencias
+        uint32_t ns = 0;
+        fin.read(reinterpret_cast<char*>(&ns), sizeof(uint32_t));
+        if (!fin) throw std::runtime_error("Formato invalido (ns).");
+
+        // Crear árbol de Huffman a partir de las frecuencias
+        ArbolCod arbol;
+        arbol.Huffman(freq_for_tree);
+
+        // Preparar nueva lista de secuencias que cargaremos (sobrescribe las existentes al final)
+        std::list<Secuencia> nuevas;
+
+        for (uint32_t s = 0; s < ns; ++s) {
+            // li (uint16_t) -> tamaño del nombre
+            uint16_t li = 0;
+            fin.read(reinterpret_cast<char*>(&li), sizeof(uint16_t));
+            if (!fin) throw std::runtime_error("Formato invalido (li).");
+
+            // leer nombre (li bytes)
+            std::string nombre;
+            if (li > 0) {
+                nombre.resize(li);
+                fin.read(&nombre[0], li);
+                if (!fin) throw std::runtime_error("Formato invalido (nombre).");
+            }
+
+            // wi (uint64_t) -> longitud de la secuencia (en bits)
+            uint64_t wi = 0;
+            fin.read(reinterpret_cast<char*>(&wi), sizeof(uint64_t));
+            if (!fin) throw std::runtime_error("Formato invalido (wi).");
+
+            // xi (uint16_t) -> justificación (ancho de línea)
+            uint16_t xi = 0;
+            fin.read(reinterpret_cast<char*>(&xi), sizeof(uint16_t));
+            if (!fin) throw std::runtime_error("Formato invalido (xi).");
+
+            // Leer la secuencia binaria: wi bits => ceil(wi/8) bytes
+            uint64_t bytesNecesarios = (wi + 7) / 8;
+            std::vector<char> raw(bytesNecesarios);
+            if (bytesNecesarios > 0) {
+                fin.read(reinterpret_cast<char*>(raw.data()), bytesNecesarios);
+                if (!fin) throw std::runtime_error("Formato invalido (binary_data).");
+            }
+
+            // Convertir bytes a string de '0'/'1' y recortar a wi bits exactos
+            std::string bits;
+            bits.reserve(static_cast<size_t>(bytesNecesarios * 8));
+            for (uint64_t b = 0; b < bytesNecesarios; ++b) {
+                unsigned char byte = static_cast<unsigned char>(raw[b]);
+                for (int bit = 7; bit >= 0; --bit) {
+                    bits.push_back( ((byte >> bit) & 1) ? '1' : '0' );
+                }
+            }
+            if (bits.size() > wi) bits.resize(static_cast<size_t>(wi));
+
+            // Decodificar la secuencia de bits usando el árbol (devuelve la secuencia de bases)
+            std::string decod = arbol.decodificacion(bits);
+            // ArbolCod::decodificacion puede devolver mensajes de error como "Codigo incompleto"
+            if (decod == "Codigo incompleto") {
+                throw std::runtime_error("Error decodificacion: codigo incompleto.");
+            }
+
+            // Reconstruir las lineas con justificacion xi
+            std::vector<std::string> lineas;
+            if (xi == 0) {
+                // Por seguridad: si xi==0, colocamos todo en una sola línea
+                lineas.push_back(decod);
+            } else {
+                for (size_t pos = 0; pos < decod.size(); pos += xi) {
+                    lineas.push_back(decod.substr(pos, xi));
+                }
+            }
+
+            // Crear objeto Secuencia y fijar sus datos
+            Secuencia sec;
+            sec.FijarDescripcion(nombre);
+            sec.FijarLineasSecuencia(lineas);
+            // Las demás propiedades (numbases, codigos, etc.) serán calculadas en EstablecerCodigosYBases()
+
+            // Agregar a la lista temporal
+            nuevas.push_back(sec);
+        }
+
+        // Cerrar archivo
+        fin.close();
+
+        // Sobrescribir las secuencias en memoria
+        this->FijarSecuencias(nuevas);
+
+        // Establecer códigos y bases y ordenar para cada secuencia (igual que en cargar)
+        std::list<Secuencia>::iterator itS;
+        for (itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); ++itS) {
+            itS->EstablecerCodigosYBases();
+        }
+        for (itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); ++itS) {
+            itS->OrdenarCodigosYBases();
+        }
+
+        // Mensaje de éxito (coincide con la especificación)
+        std::cout << "Secuencias decodificadas desde " << nombre_archivo << " y cargadas en memoria." << std::endl;
+    }
+    catch (const std::exception &e) {
+        // Si hubo cualquier error, informar el mensaje de error según el enunciado
+        fin.close();
+        std::cout << "No se pueden cargar las secuencias desde " << nombre_archivo << "." << std::endl;
+        // (Opcional) imprimir info para debug:
+        // std::cerr << "Detalle: " << e.what() << std::endl;
+        return;
+    }
 }
 
 //COMANDO RUTA_MAS_CORTA
