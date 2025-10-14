@@ -1,167 +1,128 @@
 #include "Secuencia.h"
+#include <cctype>
 #include <algorithm>
 
-//CONSTRUCTOR
-Secuencia:: Secuencia(){
-descripcion = "";
-lineas_secuencia.clear();
-};
+// Constructor / Destructor
+Secuencia::Secuencia()
+    : descripcion(), lineas_secuencia(), frecuenciaCodigos(),
+      codigos(), numbases(0), numcodigos(0) {}
 
-//LIBERAR MEMORIA
-Secuencia:: ~Secuencia(){
-};
+Secuencia::~Secuencia() {}
 
-// obtener descripcion
-std::string& Secuencia:: ObtenerDescripcion(){
-    return( descripcion );
+// Descripción
+std::string Secuencia::ObtenerDescripcion() const {
+    return descripcion;
 }
 
-// obtener lineas_secuencia
-std::vector< std::string >& Secuencia:: ObtenerLineasSecuencia(){
-    return( lineas_secuencia );
+void Secuencia::FijarDescripcion(const std::string &ndescripcion) {
+    descripcion = ndescripcion;
 }
 
-// obtener numbases
-int Secuencia:: ObtenerNumbases(){
-    return( numbases );
+// Lineas de secuencia
+std::vector<std::string>& Secuencia::ObtenerLineasSecuencia() {
+    return lineas_secuencia;
 }
 
-// obtener numcodigos
-int Secuencia:: ObtenerNumcodigos(){
-    return( numcodigos );
+void Secuencia::FijarLineasSecuencia(const std::vector<std::string> &n_lineas_secuencia) {
+    lineas_secuencia = n_lineas_secuencia;
+    // recalcular frecuencias y campos derivados
+    EstablecerCodigosYBases();
 }
 
-// obtener codigos
-std::vector< char >& Secuencia:: ObtenerCodigos(){
-    return( codigos );
+// Agregar linea (actualiza frecuencias incrementalmente)
+void Secuencia::AgregarLineaSecuencia(const std::string &linea) {
+    lineas_secuencia.push_back(linea);
+    // actualizar mapa de frecuencias
+    for (char c : linea) {
+        frecuenciaCodigos[c] += 1;
+        ++numbases;
+    }
+    // reconstruir vector codigos y numcodigos
+    codigos.clear();
+    for (const auto &p : frecuenciaCodigos) codigos.push_back(p.first);
+    numcodigos = static_cast<int>(codigos.size());
 }
 
-// fijar descripcion
-void Secuencia:: FijarDescripcion(std::string ndescripcion){
-    this->descripcion = ndescripcion;
+// --- Interfaz antigua (compatibilidad con código existente) ---
+
+int Secuencia::ObtenerNumbases() const {
+    return numbases;
 }
 
-// fijar lineas_secuencia
-void Secuencia:: FijarLineasSecuencia(std::vector< std::string > n_lineas_secuencia ){
-    this->lineas_secuencia = n_lineas_secuencia;
+int Secuencia::ObtenerNumcodigos() const {
+    return numcodigos;
 }
 
-// fijar numbases
-void Secuencia:: FijarNumbases(int n_numbases ){
-    this->numbases = n_numbases;
+std::vector<char>& Secuencia::ObtenerCodigos() {
+    return codigos;
 }
 
-// fijar numcodigos
-void Secuencia:: FijarNumcodigos(int n_numcodigos ){
-    this->numcodigos = n_numcodigos;
+void Secuencia::FijarNumbases(int n_numbases) {
+    numbases = n_numbases;
 }
 
-// fijar codigos
-void Secuencia:: FijarCodigos(std::vector< char > nCodigos){
-    this->codigos = nCodigos;
+void Secuencia::FijarNumcodigos(int n_numcodigos) {
+    numcodigos = n_numcodigos;
 }
 
-// agregar una linea a lineas_secuencia
-void Secuencia:: AgregarLineaSecuencia(std::string linea){
-    std::vector<std::string> temp = this->ObtenerLineasSecuencia();
-    temp.push_back(linea); 
-    this->FijarLineasSecuencia(temp); 
+void Secuencia::FijarCodigos(const std::vector<char> &nCodigos) {
+    codigos = nCodigos;
+    numcodigos = static_cast<int>(codigos.size());
+    // actualizar el mapa de frecuencias para claves nuevas si no existen (inicializar a 0)
+    for (char c : codigos) {
+        if (frecuenciaCodigos.find(c) == frecuenciaCodigos.end()) {
+            frecuenciaCodigos[c] = 0;
+        }
+    }
 }
 
-// establecer codigos, numcodigos y numbases
-void Secuencia:: EstablecerCodigosYBases(){
-    int bases = 0, ncodigos = 0;
-    std::vector< char > codigos;
-    //Recorrer el vector de lineas
-    std::vector< std::string >::iterator itL;
-    for(itL = this->ObtenerLineasSecuencia().begin(); itL != this->ObtenerLineasSecuencia().end(); itL ++){
-        //Recorrer la cadena de caracteres para contar las bases y codigos
-        for(char c: *itL){
-	    if(c >= 'A' && c <= 'Z') bases ++;
-	    if((c >= 'A' && c <= 'Z') || (c == '-')){
-	        ncodigos++;
-	        if(std::find(codigos.begin(), codigos.end(), c) == codigos.end()){
- 		    codigos.push_back(c);
-	        }
-	    }
-  
-        } 
+// --- Métodos de soporte ---
+
+// Rellena frecuenciaCodigos, codigos, numbases y numcodigos a partir de lineas_secuencia.
+// Este método reemplaza la lógica previa: siempre recalcula desde cero.
+void Secuencia::EstablecerCodigosYBases() {
+    frecuenciaCodigos.clear();
+    numbases = 0;
+    codigos.clear();
+
+    for (const auto &line : lineas_secuencia) {
+        for (char c : line) {
+            frecuenciaCodigos[c] += 1;
+            ++numbases;
+        }
     }
 
-    this->FijarNumbases(bases);
-    this->FijarNumcodigos(ncodigos);
-    this->FijarCodigos(codigos);
+    // llenar vector de codigos (orden por clave, porque std::map está ordenado)
+    for (const auto &p : frecuenciaCodigos) {
+        codigos.push_back(p.first);
+    }
+    numcodigos = static_cast<int>(codigos.size());
 }
 
-void Secuencia:: OrdenarCodigosYBases(){
-    std:: string orden = "ACGTURYKMSWBDHVNX-"; //cadena de caracteres que define el orden
-    int* ordenCodigos = new int[this->ObtenerCodigos().size()];
-
-    // Recorre el vector de codigos
-    for(int i = 0 ; i < this -> ObtenerCodigos().size() ; i++){
-	//Recorre el arreglo de caracteres con los ordenes
-	for(int j = 0; j < orden.size() ; j++){
-	    //Establece el orden
-	    if(this -> ObtenerCodigos()[i] == orden[j]){
-		ordenCodigos[i] = j;
-	    }
-	}
-    }
-
-    //Ordenar según el orden anteriormente establecido
-    std::vector< char > codigos = this -> ObtenerCodigos();
-    for(int i = 0; i < this -> ObtenerCodigos().size() ; i++){
-	for (int j = 0; j < this -> ObtenerCodigos().size() - 1; j++){
-	    if (ordenCodigos[j] > ordenCodigos[j + 1]) {
-		int tempOrden = ordenCodigos[j];
-		char tempCodigos = codigos[j];
-
-		ordenCodigos[j] = ordenCodigos[j+1];
-		codigos[j] = codigos[j+1];
-
-		ordenCodigos[j+1] = tempOrden;
-		codigos[j+1] = tempCodigos;
-	    }
-	}
-    }
-
-    this -> FijarCodigos(codigos);
-
-    delete[] ordenCodigos;
+// Ordena codigos y (si se desea) mantiene correspondencia con frecuenciaCodigos.
+// Aquí simplemente ordenamos lexicográficamente el vector codigos (A..Z).
+void Secuencia::OrdenarCodigosYBases() {
+    std::sort(codigos.begin(), codigos.end());
+    // numcodigos y frecuenciaCodigos ya están consistentes
 }
 
-bool Secuencia:: VerificarCodigosValidos(){
-    bool SecValida = true;
-    std :: string permitidos = "ACGTURYKMSWBDHVNX-"; //cadena de caracteres que define los codigos permitidos
-    std :: vector<char> invalidos; //vector que guarda todos los caracteres invalidos encontrados
-
-    //Recorrer las lineas de secuencias
-    std::vector< std::string >::iterator itL;
-    for(itL = this->ObtenerLineasSecuencia().begin(); itL != this->ObtenerLineasSecuencia().end(); itL ++){
-        //Recorrer la cadena de caracteres
-        for(char c: *itL){
-
-	    //Las siguientes comparaciones fueron hechas con IA generativa
-
-	    if(permitidos.find(c) == std::string::npos){
-		// Revisar que el caracter no este ya en el vector de invalidos
-		if (std::find(invalidos.begin(), invalidos.end(), c) == invalidos.end()) {
-                    invalidos.push_back(c);
-		}
-	    }
-	}
+// Imprime las frecuencias (firma const exigida)
+void Secuencia::MostrarFrecuencias() const {
+    std::cout << "Frecuencias (codigo : frecuencia)\n";
+    // Recorremos las claves del mapa para asegurar orden
+    for (const auto &p : frecuenciaCodigos) {
+        std::cout << "'" << p.first << "' : " << p.second << "\n";
     }
+}
 
-    if(!invalidos.empty()){
-	std :: cout << "La secuencia " << this->ObtenerDescripcion() 
-            << " no puede ser cargada en el sistema porque contiene codigos invalidos para una secuencia genetica como: ";
-
-	
-	for(int i = 0; i < invalidos.size(); i++){
-	    std :: cout << '\'' << invalidos[i] << '\''; 
-	}
-	return false;
+// Verificación simple: no contar espacios en blanco y frecuencias > 0
+bool Secuencia::VerificarCodigosValidos() const {
+    if (lineas_secuencia.empty()) return false;
+    for (const auto &p : frecuenciaCodigos) {
+        char c = p.first;
+        int freq = p.second;
+        if (freq <= 0) return false;
+        if (std::isspace(static_cast<unsigned char>(c))) return false;
     }
-
     return true;
 }
