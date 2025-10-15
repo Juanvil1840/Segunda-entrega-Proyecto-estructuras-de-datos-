@@ -376,7 +376,6 @@ void Sistema :: codificar(std::string nombre_archivo){
     // 4) Escribir n (uint16_t)
     uint16_t n = static_cast<uint16_t>(frecuencias.size());
     archivo.write(reinterpret_cast<char*>(&n), sizeof(uint16_t));
-    std::cout << n << " ";
 
     // 5) Escribir (ci, fi) para cada frecuencia: ci (1 byte), fi (uint64_t)
     for (auto itF = frecuencias.begin(); itF != frecuencias.end(); ++itF) {
@@ -384,13 +383,11 @@ void Sistema :: codificar(std::string nombre_archivo){
         uint64_t fi = static_cast<uint64_t>(itF->second);
         archivo.write(reinterpret_cast<char*>(&ci), sizeof(char));
         archivo.write(reinterpret_cast<char*>(&fi), sizeof(uint64_t));
-        std::cout << ci << " " << fi << " ";
     }
 
     // 6) Escribir ns (uint32_t): número de secuencias
     uint32_t ns = static_cast<uint32_t>(secuencias.size());
     archivo.write(reinterpret_cast<char*>(&ns), sizeof(uint32_t));
-    std::cout << ns << " ";
 
     // 7) Para cada secuencia escribir: li (uint16_t) nombre, wi (uint64_t) bits, xi (uint16_t), binary_code
     for (auto itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
@@ -400,7 +397,6 @@ void Sistema :: codificar(std::string nombre_archivo){
         uint16_t li = static_cast<uint16_t>(nombre.size());
         archivo.write(reinterpret_cast<char*>(&li), sizeof(uint16_t));
         if (li > 0) archivo.write(nombre.c_str(), li);
-        std::cout << li << " " << nombre << " ";
 
         // concatenar las lineas en 'bases'
         const std::vector<std::string>& lineasVec = itS->ObtenerLineasSecuencia();
@@ -419,13 +415,11 @@ void Sistema :: codificar(std::string nombre_archivo){
 
         // escribir wi (uint64_t)
         archivo.write(reinterpret_cast<char*>(&wi), sizeof(uint64_t));
-        std::cout << wi << " ";
 
         // xi: justificación (anchura de línea) -> uint16_t
         uint16_t xi = 0;
         if (!lineasVec.empty()) xi = static_cast<uint16_t>(lineasVec[0].size());
         archivo.write(reinterpret_cast<char*>(&xi), sizeof(uint16_t));
-        std::cout << xi << " ";
 
         // escribir binary_code: convertir cada 8 bits en un byte y escribir
         for (size_t j = 0; j < bits.size(); j += 8) {
@@ -434,9 +428,7 @@ void Sistema :: codificar(std::string nombre_archivo){
             unsigned char bb = static_cast<unsigned char>(byte.to_ulong());
             archivo.write(reinterpret_cast<char*>(&bb), 1);
             std::bitset<8> bitsMostrados(bb);
-            std::cout << bitsMostrados;
         }
-        std::cout << " ";
     }
 
     archivo.close();
