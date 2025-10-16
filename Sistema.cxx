@@ -8,6 +8,8 @@
 #include "NodoCod.h"
 #include <cstdint> 
 #include <cmath>
+#include <algorithm>
+
 
 
 // obtener comandos
@@ -102,7 +104,7 @@ void Sistema :: cargar(std:: string nombre_archivo){
 
 	   //Ordenar los codigos y bases segun la especificacion de la tabla 1 para cada una de las secuencias
         for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
-	    itS -> OrdenarCodigosYBases();
+	    itS->EstablecerCodigosYBases();
         }
     }
 }
@@ -130,51 +132,31 @@ void Sistema :: listar_secuencias(){
 
 
 //COMANDO HISTOGRAMA
-void Sistema :: histograma(std::string descripcion_secuencia){
-    std::list<Secuencia>& secuencias = this->ObtenerSecuencias();
 
-    if (secuencias.empty()) {
-        std::cout << "No hay secuencias cargadas en memoria.\n";
+void Sistema::histograma(std::string descripcion) {
+    auto itS = std::find_if(secuencias.begin(), secuencias.end(),
+        [&](Secuencia &s) { return s.ObtenerDescripcion() == descripcion; });
+
+    if (itS == secuencias.end()) {
+        std::cout << "No existe una secuencia con esa descripción." << std::endl;
         return;
     }
 
-    bool encontrado = false;
-
-    //buscar descripcion_secuencia
-    std::list<Secuencia>::iterator itS;
-    for(itS = secuencias.begin(); itS != secuencias.end(); itS ++){
-	descripcion_secuencia = descripcion_secuencia.erase(descripcion_secuencia.find_last_not_of(" \n\r\t")+1);
-	if( descripcion_secuencia == itS->ObtenerDescripcion()){
-	    encontrado = true;
-	    int* contadorCodigos = new int[itS->ObtenerCodigos().size()]();
-	  
-	    //Contar cuantos codigos hay de cada uno
-	    std::vector< std::string >::iterator itL;
-	    // Recorre el vector de lineas de secuencia
-	    for(itL = itS->ObtenerLineasSecuencia().begin(); itL != itS->ObtenerLineasSecuencia().end(); itL ++){
-	    // Recorre la cadena de caracteres
-		for (int j = 0; j < itL->size(); j++) {
-		    char c = (*itL)[j];
-		    // Recorre el vector de codigos
-		    for(int i = 0 ; i < itS -> ObtenerCodigos().size() ; i++){
-			if( c == itS -> ObtenerCodigos()[i] ){
-			    contadorCodigos[i]++;
-			}
-		    }
-		} 
-            }
-
-	    //Imprimir histograma
-	    for(int i = 0 ; i < itS -> ObtenerCodigos().size() ; i++){
-		std :: cout << itS -> ObtenerCodigos()[i] << " : " << contadorCodigos[i] << std::endl;
-	    }
-
-	    delete[] contadorCodigos;
-	}
+    const auto &frecuencias = itS->ObtenerFrecuencias();
+    if (frecuencias.empty()) {
+        std::cout << "No hay bases para mostrar." << std::endl;
+        return;
     }
 
-    if(!encontrado) std::cout<< "Secuencia invalida" << std::endl;
+    std::cout << "\n=== Histograma de frecuencias ===\n";
+    for (auto &p : frecuencias) {
+        std::cout << p.first << " : " << std::string(p.second, '*') 
+                  << " (" << p.second << ")\n";
+    }
+    std::cout << std::endl;
 }
+
+
 // COMANDO ES_SUBSECUENCIA
 void Sistema::es_subsecuencia(std::string subsecuencia) {
     std::list<Secuencia>& secs = this->ObtenerSecuencias();
@@ -565,7 +547,7 @@ void Sistema:: decodificar(std::string nombre_archivo) {
             itS->EstablecerCodigosYBases();
         }
         for (itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); ++itS) {
-            itS->OrdenarCodigosYBases();
+            itS->EstablecerCodigosYBases();
         }
 
         // Mensaje de éxito (coincide con la especificación)
