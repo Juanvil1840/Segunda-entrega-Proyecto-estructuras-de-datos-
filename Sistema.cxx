@@ -323,100 +323,122 @@ void Sistema :: guardar(std::string nombre_archivo){
 }
 
 //COMANDO CODIFICAR
-//COMANDO CODIFICAR
 void Sistema :: codificar(std::string nombre_archivo){
 
-    if(secuencias.empty()){
-        std::cout << "No hay secuencias cargadas en memoria.\n";
-        return;
-    }
+ if(secuencias.empty()){
+    std::cout << "No hay secuencias cargadas en memoria.\n";
+    return;
+ };
 
-    // 1) Calcular frecuencias (map<char,int>)
-    std::map<char, int> frecuencias;
-    for (auto itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
-        const std::vector<std::string>& lineas = itS->ObtenerLineasSecuencia();
-        for (size_t i = 0; i < lineas.size(); ++i) {
-            const std::string &linea = lineas[i];
-            for (size_t j = 0; j < linea.size(); ++j) {
+  std::map<char, int> frecuencias; //asocia cada codigo a una frecuencia
+    std::list<Secuencia>::iterator itS; //para recorrer lista de secuencias
+    for (itS = secuencias.begin(); itS != secuencias.end(); ++itS) { //recorre lista de secuencias
+        std::vector<std::string>& lineas = itS->ObtenerLineasSecuencia(); //obtiene las lineas por cada elemento de la lista secuencias
+        for (int i = 0; i < (int)lineas.size(); i++) {
+            std::string linea = lineas[i]; //guarda en una variable temporal la linea leida
+            for (int j = 0; j < (int)linea.size(); j++) {  //recorre cada caracterer 
                 char c = linea[j];
-                frecuencias[c]++;
+                frecuencias[c]++; // suma la aparición de cada base
             }
         }
     }
 
-    // 2) Construir árbol de Huffman (usa map<char,int>)
-    ArbolCod arbol;
-    arbol.Huffman(frecuencias);
+//arbol de Huffman
 
-    // 3) Abrir archivo binario para escritura
-    std::ofstream archivo(nombre_archivo.c_str(), std::ios::binary);
-    if(!archivo.is_open()){
-        std::cout << "No se pueden guardar las secuencias cargadas en " << nombre_archivo << "\n";
-        return;
-    }
+ArbolCod arbol;
+arbol.Huffman(frecuencias);
 
-    // 4) Escribir n (uint16_t)
-    uint16_t n = static_cast<uint16_t>(frecuencias.size());
-    archivo.write(reinterpret_cast<char*>(&n), sizeof(uint16_t));
-
-    // 5) Escribir (ci, fi) para cada frecuencia: ci (1 byte), fi (uint64_t)
-    for (auto itF = frecuencias.begin(); itF != frecuencias.end(); ++itF) {
-        char ci = itF->first;
-        uint64_t fi = static_cast<uint64_t>(itF->second);
-        archivo.write(reinterpret_cast<char*>(&ci), sizeof(char));
-        archivo.write(reinterpret_cast<char*>(&fi), sizeof(uint64_t));
-    }
-
-    // 6) Escribir ns (uint32_t): número de secuencias
-    uint32_t ns = static_cast<uint32_t>(secuencias.size());
-    archivo.write(reinterpret_cast<char*>(&ns), sizeof(uint32_t));
-
-    // 7) Para cada secuencia escribir: li (uint16_t) nombre, wi (uint64_t) bits, xi (uint16_t), binary_code
-    for (auto itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
-        // nombre y li
-        std::string nombre = itS->ObtenerDescripcion();
-        if(!nombre.empty() && nombre[0] == '>') nombre = nombre.substr(1);
-        uint16_t li = static_cast<uint16_t>(nombre.size());
-        archivo.write(reinterpret_cast<char*>(&li), sizeof(uint16_t));
-        if (li > 0) archivo.write(nombre.c_str(), li);
-
-        // concatenar las lineas en 'bases'
-        const std::vector<std::string>& lineasVec = itS->ObtenerLineasSecuencia();
-        std::string bases;
-        bases.reserve( (size_t)std::max<size_t>(1, lineasVec.size()) * 80 ); // heurística
-        for (size_t i = 0; i < lineasVec.size(); ++i) bases += lineasVec[i];
-
-        // codificar con Huffman -> bits (string de '0'/'1')
-        std::string bits = arbol.codificacion(bases);
-
-        // wi: longitud en bits (antes de padding que agregamos para bytes completos)
-        uint64_t wi = static_cast<uint64_t>(bits.size());
-
-        // rellenar hasta múltiplo de 8
-        while (bits.size() % 8 != 0) bits.push_back('0');
-
-        // escribir wi (uint64_t)
-        archivo.write(reinterpret_cast<char*>(&wi), sizeof(uint64_t));
-
-        // xi: justificación (anchura de línea) -> uint16_t
-        uint16_t xi = 0;
-        if (!lineasVec.empty()) xi = static_cast<uint16_t>(lineasVec[0].size());
-        archivo.write(reinterpret_cast<char*>(&xi), sizeof(uint16_t));
-
-        // escribir binary_code: convertir cada 8 bits en un byte y escribir
-        for (size_t j = 0; j < bits.size(); j += 8) {
-            std::string byteStr = bits.substr(j, 8);
-            std::bitset<8> byte(byteStr);
-            unsigned char bb = static_cast<unsigned char>(byte.to_ulong());
-            archivo.write(reinterpret_cast<char*>(&bb), 1);
-            std::bitset<8> bitsMostrados(bb);
-        }
-    }
-
-    archivo.close();
-    std::cout << "\nSecuencias codificadas y almacenadas en " << nombre_archivo << std::endl;
+//archivo binario
+std::ofstream archivo(nombre_archivo.c_str(), std::ios::binary);
+if(!archivo.is_open()){
+    std::cout<<"No se pueden guardar las secuencias cargadas en "<<nombre_archivo<<"\n";
+    return;
 }
 
+//estructura archivo fabin
+//n: cantidad de bases diferentes
+short n = (short)frecuencias.size(); // cuenta el numero de "frecuencias"
+std::cout<<n<<" "; // de prueba
+archivo.write((char*)&n, sizeof(short)); // escribe en binario con la cantidad de bytes (2 bytes)
+
+// c: base. f: frecuencia asociada a la base 
+std::map<char, int>::iterator itF;
+for(itF = frecuencias.begin(); itF != frecuencias.end(); ++itF){
+    char c = itF->first;
+    uint64_t f = static_cast<uint64_t>(itF->second);
+    std::cout << c << " " << f << " "; // de prueba
+    archivo.write(reinterpret_cast<char*>(&c), sizeof(char)); // escribe en binario c (1 byte)
+    archivo.write(reinterpret_cast<char*>(&f), sizeof(uint64_t)); // escribe en binario f (8 bytes)
+}
+
+// ns: cantidad de secuencias 
+uint32_t ns = static_cast<uint32_t>(secuencias.size());  //cantidad de secuencias cargadas en memoria
+std::cout << ns << " "; // de prueba
+archivo.write(reinterpret_cast<char*>(&ns), sizeof(uint32_t)); //pasa a binario 
+
+
+// l y s
+
+for (itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
+    std::string nombre = itS->ObtenerDescripcion(); //obtiene el nombre de la secuencia
+    if(!nombre.empty() && nombre[0] == '>'){
+        nombre = nombre.substr(1); //quita >
+    }
+
+
+
+short l = (short)nombre.size(); //mide cuantos caracteres tiene el nombre
+archivo.write((char*)&l, sizeof(short));
+archivo.write(nombre.c_str(), l);
+std::cout<<l<<" "<<nombre<<" ";
+
+// concatenar las lineas de la secuencia
+std::vector<std::string>& lineas = itS->ObtenerLineasSecuencia();
+std::string bases;
+for (int i = 0; i < (int)lineas.size(); i++) {
+    bases += lineas[i];
+}
+
+// Codificar las bases con Huffman (obtener bits primero)
+std::string bits = arbol.codificacion(bases);
+
+// wi: Longitud de la secuencia EN BITS (antes de padding)
+uint64_t w = static_cast<uint64_t>(bits.size());
+
+// Rellenar hasta múltiplo de 8 bits para escribir bytes
+while (bits.size() % 8 != 0) {
+    bits += '0';
+}
+
+// Escribir w (uint64_t)
+archivo.write(reinterpret_cast<char*>(&w), sizeof(uint64_t));
+std::cout << w << " ";
+
+// x: Ancho de linea (uint16_t / short)
+short x = 0;
+if (!lineas.empty()) {
+    x = static_cast<short>(lineas[0].size()); // ancho real de línea
+}
+archivo.write(reinterpret_cast<char*>(&x), sizeof(short));
+std::cout << x << " ";
+
+// binary_code: escribir los bits como bytes
+for (int j = 0; j < (int)bits.size(); j += 8) {
+    std::string byteStr = bits.substr(j, 8);
+    std::bitset<8> byte(byteStr);
+    unsigned char c = static_cast<unsigned char>(byte.to_ulong());
+    archivo.write(reinterpret_cast<char*>(&c), 1);
+    std::bitset<8> bitsMostrados(c);
+    std::cout << bitsMostrados;
+}
+std::cout << " ";
+
+
+ }
+
+  archivo.close();
+  std::cout << "\nSecuencias codificadas y almacenadas en " << nombre_archivo << std::endl;
+}
 
 
 //COMANDO DECODIFICAR
