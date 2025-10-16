@@ -2,11 +2,10 @@
 #include <cctype>
 #include <algorithm>
 
-// Constructor / Destructor
 Secuencia::Secuencia() : descripcion(""), lineas_secuencia(), frecuenciaCodigos() {}
 Secuencia::~Secuencia() {}
 
-// ==================== DESCRIPCIÓN ====================
+//  DESCRIPCIÓN
 
 std::string Secuencia::ObtenerDescripcion() const {
     return descripcion;
@@ -16,7 +15,7 @@ void Secuencia::FijarDescripcion(const std::string &ndescripcion) {
     descripcion = ndescripcion;
 }
 
-// ==================== LÍNEAS DE SECUENCIA ====================
+//  LÍNEAS DE SECUENCIA 
 
 std::vector<std::string>& Secuencia::ObtenerLineasSecuencia() {
     return lineas_secuencia;
@@ -37,7 +36,7 @@ void Secuencia::AgregarLineaSecuencia(const std::string &linea) {
     }
 }
 
-// ==================== MANEJO DE FRECUENCIAS ====================
+//  MANEJO DE FRECUENCIAS
 
 // Recalcula todas las frecuencias desde las líneas
 void Secuencia::EstablecerCodigosYBases() {
