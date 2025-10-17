@@ -5,36 +5,33 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <cstddef>
+
+struct orden{
+    bool operator()(char a, char b) const {
+	std::string orden = "ACGTURYKMSWBDHVNX-";
+	std::size_t posicion_a = orden.find(a);
+	std::size_t posicion_b = orden.find(b);
+	return posicion_a < posicion_b;
+    }
+};
 
 class Secuencia {
 public:
     Secuencia();
     virtual ~Secuencia();
-
-    // Información general
     std::string ObtenerDescripcion() const;
-    void FijarDescripcion(const std::string &ndescripcion);
-
-    // Manejo de las líneas de la secuencia
     std::vector<std::string>& ObtenerLineasSecuencia();
+    const std::map<char, int, orden>& ObtenerFrecuencias() const;
+    void FijarDescripcion(const std::string &ndescripcion);
     void FijarLineasSecuencia(const std::vector<std::string> &n_lineas_secuencia);
     void AgregarLineaSecuencia(const std::string &linea);
-
-    // Métodos relacionados con las bases
-    void EstablecerCodigosYBases();  // Calcula frecuencias desde las líneas
-    void MostrarFrecuencias() const; // Imprime las frecuencias
-    bool VerificarCodigosValidos() const;
-
-    // === NUEVA interfaz basada en map ===
-    int ObtenerNumbases() const;                  // Suma total de frecuencias
-    int ObtenerNumcodigos() const;                // Cantidad de claves únicas
-    std::vector<char> ObtenerCodigos() const;     // Devuelve las claves
-    const std::map<char, int>& ObtenerFrecuencias() const; // Acceso al mapa completo
+    void EstablecerCodigosYFrecuencias();
 
 private:
     std::string descripcion;
     std::vector<std::string> lineas_secuencia;
-    std::map<char, int> frecuenciaCodigos;  // Base principal de datos
+    std::map<char, int,orden> frecuenciaCodigos;
 };
 
 #endif

@@ -4,30 +4,23 @@
 #include<list>
 #include <bitset>
 #include "Sistema.h"
-#include "ArbolCod.h" // para poder usar la implementación del arbol de codificación
-#include "NodoCod.h"
+#include "ArbolCod.h"
 #include <cstdint> 
 #include <cmath>
 #include <algorithm>
 
-
-
-// obtener comandos
 const std::vector<Comando>& Sistema :: ObtenerComandos() const{
     return( comandos );
 }
 
-// fijar comandos
-void Sistema::FijarComandos(std::vector<Comando> ncomandos) {
-  this->comandos = ncomandos;
-}
-
-// obtener secuencias
 std::list< Secuencia >& Sistema:: ObtenerSecuencias(){
     return( secuencias );
 }
 
-// fijar secuencias
+void Sistema::FijarComandos(std::vector<Comando> ncomandos) {
+  this->comandos = ncomandos;
+}
+
 void Sistema:: FijarSecuencias (std::list< Secuencia > secs){
     this->secuencias = secs;
 }
@@ -35,7 +28,8 @@ void Sistema:: FijarSecuencias (std::list< Secuencia > secs){
 //COMANDO CARGAR
 void Sistema :: cargar(std:: string nombre_archivo){
 
-   std::list<Secuencia> lista;
+    std::list<Secuencia> lista;
+    bool invalido = false;
     
     std::ifstream file(nombre_archivo);
     // en caso de que el archivo no se abra
@@ -49,40 +43,52 @@ void Sistema :: cargar(std:: string nombre_archivo){
 
         while (std::getline(file, linea)) {
             if (!linea.empty() && linea[0] == '>') {
+
+		if(!actual.ObtenerDescripcion().empty() && !invalido){
+		    lista.push_back(actual);
+		}
+
                 // Si ya había una secuencia en construcción
                 if (!actual.ObtenerDescripcion().empty()) {
-                    lista.push_back(actual);
                     actual = Secuencia(); // reiniciamos
+		    invalido = false;
                 }
                 linea = linea.substr(1); // quitar '>'
 
-		// Metodo para quitar caracteres de saltos de linea y espacios obtenido con IA generativa
-
-		actual.FijarDescripcion(linea.erase(linea.find_last_not_of(" \n\r\t")+1)); //quitar espacios y saltos de linea
+	        actual.FijarDescripcion(linea.erase(linea.find_last_not_of(" \n\r\t")+1)); //quitar espacios y saltos de linea
             } else if (!linea.empty()) {
-            actual.AgregarLineaSecuencia(linea.erase(linea.find_last_not_of(" \n\r\t")+1)); 
-        }
-    }    
+		if(invalido){
+		    continue;
+		}
+		
+	        if (!actual.ObtenerDescripcion().empty() && !invalido) {
+		    std::vector<char> invalidos = verificarCodigosValidos(linea);
+		    if(invalidos.size() != 0){
+		        std :: cout << "La secuencia " << actual.ObtenerDescripcion() 
+            	        	    << " no puede ser cargada en el sistema porque contiene codigos invalidos para una secuencia genetica como: ";
+
+	
+		        for(size_t i = 0; i < invalidos.size(); i++){
+	    		    std :: cout << '\'' << invalidos[i] << '\''; 
+		        }
+		    
+			std :: cout << std::endl;
+		        invalido = true;
+		    }else{
+		     actual.AgregarLineaSecuencia(linea.erase(linea.find_last_not_of(" \n\r\t")+1));
+	 	    }       
+		}
+	    }
+        }  
 
         // Guardar la última secuencia
-        if (!actual.ObtenerDescripcion().empty()) {
+        if (!invalido) {
             lista.push_back(actual);
         }
 
         file.close();
 
-	// Verificar que las secuencias tengan unicamente codigos validos
-	std::list<Secuencia> listaAux;
-	std::list<Secuencia>::iterator itS;
-	for(itS = lista.begin(); itS != lista.end(); itS ++){
-	    if(itS -> VerificarCodigosValidos()){
-		listaAux.push_back(*itS);
-	    }else{
-		std :: cout << std:: endl;
-	    }
-	}
-
-	this->FijarSecuencias(listaAux);
+	this->FijarSecuencias(lista);
 
         // mostrar en pantalla cuantas cadenas fueron validas y se cargaron correctamente
         if (this->ObtenerSecuencias().empty()) {
@@ -97,14 +103,11 @@ void Sistema :: cargar(std:: string nombre_archivo){
                       << nombre_archivo << "." << std::endl;
         }
 
-        //Establecer codigos y bases en cada secuencia recien cargada
-        for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
-	    itS -> EstablecerCodigosYBases();
-        }
+        //Establecer codigos y frecuencias en cada secuencia recien cargada
 
-	   //Ordenar los codigos y bases segun la especificacion de la tabla 1 para cada una de las secuencias
+	std::list<Secuencia>::iterator itS;
         for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
-	    itS->EstablecerCodigosYBases();
+	    itS -> EstablecerCodigosYFrecuencias();
         }
     }
 }
@@ -119,12 +122,22 @@ void Sistema :: listar_secuencias(){
 	std::cout << "Hay " << this->ObtenerSecuencias().size() << " secuencias cargadas en memoria" << std::endl;
 	//Imprimir cuantas bases tiene cada secuencia
 	std::list<Secuencia>::iterator itS;
-	for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){	    
+	
+
+	for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
+	    int contBases = 0;
+	    std::map<char,int,orden>::const_iterator itM;
+	    for(itM = itS->ObtenerFrecuencias().begin();itM != itS->ObtenerFrecuencias().end(); itM++){
+		if(itM -> first != '-'){
+		    contBases += itM -> second;
+		} 
+	    }
+	    
 	    std:: cout << "Secuencia " << itS->ObtenerDescripcion() << " contiene ";
-	    if(itS->ObtenerNumcodigos() == itS->ObtenerNumbases()){
-		std:: cout << itS->ObtenerNumbases() << " bases." << std::endl;
+	    if(!(itS->ObtenerFrecuencias().find('-') != itS->ObtenerFrecuencias().end())){
+		std:: cout << contBases << " bases." << std::endl;
 	    }else{
-		std:: cout << "al menos " << itS->ObtenerNumbases() << " bases" << std::endl;
+		std:: cout << "al menos " << contBases << " bases" << std::endl;
 	    }
 	}
     }
@@ -132,29 +145,33 @@ void Sistema :: listar_secuencias(){
 
 
 //COMANDO HISTOGRAMA
+void Sistema :: histograma(std::string descripcion_secuencia){
+    std::list<Secuencia>& secuencias = this->ObtenerSecuencias();
 
-void Sistema::histograma(std::string descripcion) {
-    auto itS = std::find_if(secuencias.begin(), secuencias.end(),
-        [&](Secuencia &s) { return s.ObtenerDescripcion() == descripcion; });
-
-    if (itS == secuencias.end()) {
-        std::cout << "No existe una secuencia con esa descripción." << std::endl;
+    if (secuencias.empty()) {
+        std::cout << "No hay secuencias cargadas en memoria.\n";
         return;
     }
 
-    const auto &frecuencias = itS->ObtenerFrecuencias();
-    if (frecuencias.empty()) {
-        std::cout << "No hay bases para mostrar." << std::endl;
-        return;
+    bool encontrado = false;
+
+    //buscar descripcion_secuencia
+    std::list<Secuencia>::iterator itS;
+    for(itS = secuencias.begin(); itS != secuencias.end(); itS ++){
+	descripcion_secuencia = descripcion_secuencia.erase(descripcion_secuencia.find_last_not_of(" \n\r\t")+1);
+	if( descripcion_secuencia == itS->ObtenerDescripcion()){
+	    encontrado = true;
+	    std::map<char,int,orden>::const_iterator itM;
+	    //Imprimir histograma
+	    for(itM = itS->ObtenerFrecuencias().begin();itM != itS->ObtenerFrecuencias().end(); itM++){
+		std :: cout << itM -> first << " : " << itM -> second << std::endl;
+	    }
+	}
     }
 
-    std::cout << "\n=== Histograma de frecuencias ===\n";
-    for (auto &p : frecuencias) {
-        std::cout << p.first << " : " << std::string(p.second, '*') 
-                  << " (" << p.second << ")\n";
-    }
-    std::cout << std::endl;
+    if(!encontrado) std::cout<< "Secuencia invalida" << std::endl;
 }
+
 
 
 // COMANDO ES_SUBSECUENCIA
@@ -281,7 +298,7 @@ void Sistema::enmascarar(std::string subsecuencia) {
                 }
             }
             s.FijarLineasSecuencia(nuevas);
-            s.EstablecerCodigosYBases();
+            s.EstablecerCodigosYFrecuencias();
         }
     }
 
@@ -548,10 +565,10 @@ void Sistema::decodificar(std::string nombre_archivo) {
         // Sobrescribir las secuencias
         this->FijarSecuencias(nuevas);
 
-        // Establecer codigos y bases
+        // Establecer codigos y frecuencias
         std::list<Secuencia>::iterator itS;
         for (itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); ++itS) {
-            itS->EstablecerCodigosYBases();
+            itS->EstablecerCodigosYFrecuencias();
         }
 
         std::cout << "Secuencias decodificadas desde " << nombre_archivo << " y cargadas en memoria." << std::endl;
@@ -575,4 +592,22 @@ void Sistema :: base_remota(std::string base_remota, int i, int j){
 
     std::cout<<"Exito base_remota"<<base_remota<<" i= "<<i<<" j= "<<j<<"\n";
 
+}
+
+std :: vector<char> Sistema ::verificarCodigosValidos(const std::string& linea){
+    const std :: string permitidos = "ACGTURYKMSWBDHVNX-"; //cadena de caracteres que define los codigos permitidos
+    std :: vector<char> invalidos; //vector que guarda todos los caracteres invalidos encontrados
+
+    invalidos.clear();
+
+    for(char c: linea){
+	if(permitidos.find(c) == std::string::npos){
+	    // Revisar que el caracter no este ya en el vector de invalidos
+	    if (std::find(invalidos.begin(), invalidos.end(), c) == invalidos.end()) {
+                invalidos.push_back(c);
+	    }
+	}
+    }
+
+    return invalidos;
 }
