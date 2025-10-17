@@ -375,7 +375,6 @@ if(!archivo.is_open()){
 //estructura archivo fabin
 //n: cantidad de bases diferentes
 short n = (short)frecuencias.size(); // cuenta el numero de "frecuencias"
-std::cout<<n<<" "; // de prueba
 archivo.write((char*)&n, sizeof(short)); // escribe en binario con la cantidad de bytes (2 bytes)
 
 // c: base. f: frecuencia asociada a la base 
@@ -383,14 +382,12 @@ std::map<char, int>::iterator itF;
 for(itF = frecuencias.begin(); itF != frecuencias.end(); ++itF){
     char c = itF->first;
     uint64_t f = static_cast<uint64_t>(itF->second);
-    std::cout << c << " " << f << " "; // de prueba
     archivo.write(reinterpret_cast<char*>(&c), sizeof(char)); // escribe en binario c (1 byte)
     archivo.write(reinterpret_cast<char*>(&f), sizeof(uint64_t)); // escribe en binario f (8 bytes)
 }
 
 // ns: cantidad de secuencias 
-uint32_t ns = static_cast<uint32_t>(secuencias.size());  //cantidad de secuencias cargadas en memoria
-std::cout << ns << " "; // de prueba
+uint32_t ns = static_cast<uint32_t>(secuencias.size());  //cantidad de secuencias cargadas en 
 archivo.write(reinterpret_cast<char*>(&ns), sizeof(uint32_t)); //pasa a binario 
 
 
@@ -407,7 +404,7 @@ for (itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
 short l = (short)nombre.size(); //mide cuantos caracteres tiene el nombre
 archivo.write((char*)&l, sizeof(short));
 archivo.write(nombre.c_str(), l);
-std::cout<<l<<" "<<nombre<<" ";
+
 
 // concatenar las lineas de la secuencia
 std::vector<std::string>& lineas = itS->ObtenerLineasSecuencia();
@@ -429,7 +426,6 @@ while (bits.size() % 8 != 0) {
 
 // Escribir w (uint64_t)
 archivo.write(reinterpret_cast<char*>(&w), sizeof(uint64_t));
-std::cout << w << " ";
 
 // x: Ancho de linea (uint16_t / short)
 short x = 0;
@@ -437,7 +433,6 @@ if (!lineas.empty()) {
     x = static_cast<short>(lineas[0].size()); // ancho real de línea
 }
 archivo.write(reinterpret_cast<char*>(&x), sizeof(short));
-std::cout << x << " ";
 
 // binary_code: escribir los bits como bytes
 for (int j = 0; j < (int)bits.size(); j += 8) {
@@ -448,7 +443,6 @@ for (int j = 0; j < (int)bits.size(); j += 8) {
     std::bitset<8> bitsMostrados(c);
     std::cout << bitsMostrados;
 }
-std::cout << " ";
 
 
  }
