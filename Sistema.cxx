@@ -576,9 +576,56 @@ void Sistema::decodificar(std::string nombre_archivo) {
 
 //COMANDO RUTA_MAS_CORTA
 void Sistema :: ruta_mas_corta(std::string descripcion_secuencia, int i, int j, int x, int y){
+    Secuencia seq;
 
-    std::cout<<"Exito ruta_mas_corta"<<descripcion_secuencia<<" i= "<<i<<" j= "<<j<<" x= "<<x<<" y= "<<y<<"\n";
+    //Verificar que la secuencia con la descripcion dada exista
+    bool encontrado = false;
+    std::list<Secuencia>::iterator itS;
+    for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
+	if(itS->ObtenerDescripcion() == descripcion_secuencia){
+	    encontrado = true;
+	    seq = *itS;
+	    break;
+	}
+    }
 
+    if(!encontrado){
+	std::cout << "La secuencia " << descripcion_secuencia << " no existe" << std::endl;
+        return;
+    }
+
+    std::vector<std::string> matrizSecuencia = seq.ObtenerLineasSecuencia();   
+
+    // Verificar que la posicion de la base origen sea valida
+    if((i >= (int)matrizSecuencia.size()) || (j >= (int)matrizSecuencia[i].size())){
+	std::cout << "La base en la posicion [" << i << "," << j << "] no existe" << std::endl;
+        return;
+    }
+
+    // Verificar que la posicion de la base origen sea valida
+    if((x >= (int)matrizSecuencia.size()) || (y >= (int)matrizSecuencia[x].size())){
+	std::cout << "La base en la posicion [" << x << "," << y << "] no existe" << std::endl;
+        return;
+    }
+
+    // Obtener Grafo de la secuencia
+    Grafo grafoSecuencia = this->obtenerGrafoSecuencia(matrizSecuencia);
+
+    //Obtener la ruta mas corta entre la base origen y la base destino
+    int indiceBaseOrigen = grafoSecuencia.buscarVertice(i,j);
+    int indiceBaseDestino = grafoSecuencia.buscarVertice(x,y);
+    std::vector<int> ruta = grafoSecuencia.rutaMasCorta(indiceBaseOrigen,indiceBaseDestino)
+    double costoRuta = grafoSecuencia.costoRuta(ruta);
+
+    std::cout << "Para la secuencia " << descripcion_secuencia << ", la ruta mas corta entre la base "<< matrizSecuencia[i][j] << "en [" << i << "," << j << "] y en la base "<< matrizSecuencia[x][y] << "en [" << x << "," << y << "] es:" << std::endl;
+
+    for(std::size_t i = 0; i < ruta.size(); ++i){
+	std::cout << grafoSecuencia.obtenerBase(i) << " ";
+    }
+ 
+    std::cout << std::endl;
+
+    std::cout << "El costo total de la ruta es: " << costoRuta << std::endl;
 }
 
 //COMANDO BASE REMOTA
