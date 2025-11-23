@@ -1,9 +1,11 @@
 #ifndef __BASE_H__
 #define __BASE_H__
 
+#include <ostream> 
+
 class Base {
     protected:
-	char codigo
+	char codigo;
 	int i;
 	int j;
     public:
@@ -15,8 +17,14 @@ class Base {
 	void fijarCodigo(char ncodigo);
 	void fijari(int ni);
 	void fijarj(int nj);
-	//operador ==
-	//operador <
+	bool operator==(const Base& b) const;
+	bool operator<(const Base& b) const;
+	double pesoConexion(Base b);
+
+	friend std::ostream& operator<<(std::ostream& os, const Base& b){
+    	    os << b.codigo << ": (" << b.i << "," << b.j << ")";
+    	    return os;
+	}
 };
 
 #endif

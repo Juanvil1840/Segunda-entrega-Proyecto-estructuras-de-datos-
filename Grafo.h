@@ -12,6 +12,7 @@ class Grafo {
 	~Grafo();
 	std::vector<Base>& obtenerVertices();
 	double** obtenerAristas();
+	Base obtenerBase(int indice);
 	void fijarVertices(std::vector<Base>& nverts);
 	bool fijarAristas(double** naris);
 	
@@ -19,18 +20,23 @@ class Grafo {
 	int cantidadVertices();
 	bool insertarVertice(Base dato);
 	int buscarVertice(Base dato);
+	int buscarVertice(int i, int j);
 	bool eliminarVertice(Base dato);
 	
 	//Operaciones sobre aristas
 	int cantidadAristas();
-	bool insertarArista(Base origen, Base destino, double peso);
-	P buscarArista(Base origen, Base destino); 
+	bool insertarArista(int indiceOrigen, int indiceDestino, double peso);
+	double buscarArista(Base origen, Base destino); 
 	bool eliminarArista(Base origen, Base destino);
 
 	//Recorridos
 	void recorridoPlano(); 
 	bool recorridoEnProfundidad(Base vertice, std::vector<Base>& visitados);
 	bool recorridoEnAnchura(Base vInicial, std::vector<Base>& visitados); 
+
+	// Rutas
+	std::vector<int> rutaMasCorta(int inicio, int destino);
+	double Grafo::costoRuta(std::vector<int> ruta);
 };
 
 #endif

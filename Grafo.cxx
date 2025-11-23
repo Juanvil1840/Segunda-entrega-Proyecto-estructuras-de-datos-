@@ -1,5 +1,6 @@
 #include "Grafo.h"
 #include <algorithm>
+#include <limits>
 #include <queue>
 
 Grafo::Grafo() {
@@ -47,6 +48,10 @@ double** Grafo::obtenerAristas(){
     return aristas;
 }
 
+Base Grafo::obtenerBase(int indice){
+    return vertices[indice];
+}
+
 void Grafo::fijarVertices(std::vector<Base>& nvertices){
     if (aristas != nullptr) {
         std::size_t n = vertices.size();
@@ -86,7 +91,7 @@ bool Grafo::fijarAristas(double** naris) {
 
 //Operaciones sobre vertices
 int Grafo::cantidadVertices(){
-    return vertices.size();
+    return (int)vertices.size();
 }
 
 bool Grafo::insertarVertice(Base dato){
@@ -197,7 +202,7 @@ int Grafo::cantidadAristas(){
 }
 
 bool Grafo::insertarArista(int indiceOrigen, int indiceDestino, double peso){
-    if((aristas == nullptr) || (indiceOrigen == -1) || (indiceDestino == -1)) return false;
+    if((aristas == nullptr) || (indiceOrigen < 0) || (indiceDestino < 0) || (indiceOrigen >= (int)vertices.size()) || (indiceDestino >= (int)vertices.size())) return false;
 
     aristas[indiceOrigen][indiceDestino] = peso;
      
@@ -309,3 +314,95 @@ bool Grafo::recorridoEnAnchura(Base vInicial, std::vector<Base>& visitados){
 
     return true;
 } 
+
+std::vector<int> Grafo::rutaMasCorta(int inicio, int destino){
+
+    int n = cantidadVertices();
+
+    std::vector<double> dist; // vector de distancias
+    dist.resize(n); 
+
+    std::vector<int> pred; // vector con los indices de predecesores
+    pred.resize(n);
+
+    std::vector<bool> S; //vector de nodos ya visitados
+    S.resize(n);
+
+    //inicializar
+    double infinito = std::numeric_limits<double>::infinity();
+    for(int i = 0; i<n; i++){
+        dist[i] = infinito; 
+        pred[i]= -1; //ningun predecesor
+        S[i] = false; // nadie ha sido visitado
+    }
+
+    //nodo inicial
+    dist[inicio] = 0; // la distancia del inicio es 0
+    pred[inicio] = inicio; // El predecesor del inicio es él mismo
+
+    // Se busca el vértice no visitado que tenga la menor distancia desde el nodo origen
+    for(int k=0; k<n; k++){
+        int ind = -1; //índice del vertice con menor distancia 
+        double minDist = infinito; //minima distancia encontrada hasta ahroa
+        for(int j = 0; j<n; j++){
+            if(!S[j] && dist[j] < minDist){ // si visitado es falso y distancia es menor a la minima distancia encontrada hasta ahora
+                minDist = dist[j];// minDist guarda la menor distancia encontrada hasta esta iteración
+                ind = j; // ind es el índice del vértice que tiene esa menor distancia
+            }
+        }
+        if(ind == -1){ break;} // no hay más alcanzables
+
+        S[ind] = true;
+
+        
+        if(ind == destino){break;} //Si se llega al final, terminar
+        
+
+        // despues de escojer la distancia minima, se debe revisar si pasar por ind mejora la distancia hacia cada vecino
+
+        // obtener lista de vecino de ind
+
+        std::vector<int> vecinos;
+    	for (std::size_t j = 0; j < n; ++j) {
+            if (aristas[ind][j] != 0) {
+                vecinos.push_back((int)j);
+            }
+        }
+
+        for(std::size_t j = 0; j < vecinos.size(); ++j){
+            int v = vecinos[j];
+            double weight = aristas[ind][v];
+            if(!S[v] && dist[ind] + weight < dist[v]){ // si el nodo no ha sido visitado y la distancia más el peso de la conexión es menor a la distancia actual para ese nodo 
+                dist[v] = dist[ind] + weight;
+                pred[v] = ind;  
+            }
+        }
+
+
+    }
+
+    //reconstruir el camino desde el destino hacía atrás 
+    std::vector<int> camino;
+    int actual = destino;
+
+    if(pred[actual] == -1){return camino;}
+
+    while(actual != inicio){
+        camino.push_back(actual);
+        actual = pred[actual];
+    }
+
+    camino.push_back(inicio);
+    std::reverse(camino.begin(), camino.end());
+ 
+    return camino;
+}
+
+double Grafo::costoRuta(std::vector<int> ruta){
+    double costo = 0;
+    for(int i = 0; i < (int)ruta.size()-1; i++){
+        costo += aristas[ruta[i]][ruta[i+1]];
+    }
+
+    return costo;
+}

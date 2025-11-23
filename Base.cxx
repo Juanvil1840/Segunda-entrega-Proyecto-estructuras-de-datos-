@@ -1,4 +1,5 @@
 #include "Base.h"
+#include <math.h>
 
 Base::Base(){
     codigo = ' ';
@@ -36,10 +37,17 @@ void Base::fijarj(int nj){
   j = nj;
 }
 
-bool operator==(const Base& b) const{
+bool Base::operator==(const Base& b) const{
     return codigo == b.obtenerCodigo() && i == b.obteneri() && j == b.obtenerj();
 }
 
-bool operator<(const Base& b) const{
+bool Base::operator<(const Base& b) const{
     return (i < b.obteneri()) || (i == b.obteneri() && j < b.obtenerj());
+}
+
+double Base::pesoConexion(Base b){
+    int ascii1 = (int)(codigo);
+    int ascii2 = (int)(b.obtenerCodigo());
+
+   return 1.0/(1.0 + std:abs(ascii1 - ascii2);
 }
