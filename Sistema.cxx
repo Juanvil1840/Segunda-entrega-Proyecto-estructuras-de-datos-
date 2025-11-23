@@ -605,3 +605,64 @@ std :: vector<char> Sistema ::verificarCodigosValidos(const std::string& linea){
 
     return invalidos;
 }
+
+Grafo Sistema::obtenerGrafoSecuencia(Secuencia seq){
+    Grafo grafoSecuencia;
+
+    //Extraer matriz de bases
+    std::vector<std::string> matriz = seq.ObtenerLineasSecuencia();
+    
+    //Insertar vertices
+    for(std::size_t i = 0; i < matriz.size(); i++){
+	std::string fila = matriz[i];
+	for(std::size_t j = 0; j < fila.size(); j++){
+	    Base base(fila[j], i, j);
+	    grafoSecuencia.insertarVertice(base);
+	}
+    }
+
+    //Insertar aristas
+    std::vector<Base> vertices = grafoSecuencia.obtenerVertices();
+    for(int k = 0; k < grafoSecuencia.cantidadVertices(); k++){
+	int fila = vertices[k].obteneri();
+	int columna = vertices[k].obtenerj();
+
+	//Vecino superior
+	if(fila > 0){
+	    int indiceVecino = grafoSecuencia.buscarVertice(fila-1, columna);
+	
+	    double peso = vertices[k].pesoConexion(vertices[indiceVecino]);
+	    grafoSecuencia.insertarArista(k,indiceVecino, peso); 
+	    grafoSecuencia.insertarArista(indiceVecino,k, peso); 
+	}
+
+	//Vecino inferior
+	if(fila < (int)(matriz.size() - 1)){
+	    int indiceVecino = grafoSecuencia.buscarVertice(fila+1, columna);
+	
+	    double peso = vertices[k].pesoConexion(vertices[indiceVecino]);
+	    grafoSecuencia.insertarArista(k,indiceVecino, peso); 
+	    grafoSecuencia.insertarArista(indiceVecino,k, peso); 
+	}
+
+	//Vecino izquierdo
+	if(columna > 0){
+	    int indiceVecino = grafoSecuencia.buscarVertice(fila, columna-1);
+	
+	    double peso = vertices[k].pesoConexion(vertices[indiceVecino]);
+	    grafoSecuencia.insertarArista(k,indiceVecino, peso); 
+	    grafoSecuencia.insertarArista(indiceVecino,k, peso); 
+	}
+
+	//Vecino derecho
+	if(columna < (int)(matriz[fila].size() - 1)){
+	    int indiceVecino = grafoSecuencia.buscarVertice(fila, columna+1);
+	
+	    double peso = vertices[k].pesoConexion(vertices[indiceVecino]);
+	    grafoSecuencia.insertarArista(k,indiceVecino, peso); 
+	    grafoSecuencia.insertarArista(indiceVecino,k, peso); 
+	}
+    }
+
+    return grafoSecuencia;
+}
