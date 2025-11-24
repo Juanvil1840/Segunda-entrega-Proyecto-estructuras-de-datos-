@@ -5,6 +5,7 @@
 #include <vector>
 #include "Comando.h"
 #include "Secuencia.h"
+#include "Grafo.h"
 
 class Sistema {
   public:
@@ -23,6 +24,7 @@ class Sistema {
     void ruta_mas_corta(std::string descripcion_secuencia, int i, int j, int x, int y);
     void base_remota(std::string descripcion_secuencia, int i, int j); 
     std :: vector<char> verificarCodigosValidos(const std::string& linea);
+    Grafo obtenerGrafoSecuencia(std::vector<std::string> matriz);
   protected:
     std::list< Secuencia > secuencias;
     std::vector<Comando> comandos;

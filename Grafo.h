@@ -1,6 +1,7 @@
 #ifndef __GRAFO_H__
 #define __GRAFO_H__
 #include <vector>
+#include "Base.h"
 
 class Grafo {
     protected:
@@ -36,7 +37,7 @@ class Grafo {
 
 	// Rutas
 	std::vector<int> rutaMasCorta(int inicio, int destino);
-	double Grafo::costoRuta(std::vector<int> ruta);
+	double costoRuta(std::vector<int> ruta);
 };
 
 #endif

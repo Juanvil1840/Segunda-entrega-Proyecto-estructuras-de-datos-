@@ -13,15 +13,15 @@ Base::Base(char ncodigo, int ni, int nj){
     j = nj;
 }
 
-char Base::obtenerCodigo(){
+char Base::obtenerCodigo() const{
   return codigo;
 }
 
-int Base::obteneri(){
+int Base::obteneri() const{
   return i;
 }
 
-int Base::obtenerj(){
+int Base::obtenerj() const{
   return j;
 }
 
@@ -49,5 +49,5 @@ double Base::pesoConexion(Base b){
     int ascii1 = (int)(codigo);
     int ascii2 = (int)(b.obtenerCodigo());
 
-   return 1.0/(1.0 + std:abs(ascii1 - ascii2);
+   return 1.0/(1.0 + std::abs(ascii1 - ascii2));
 }

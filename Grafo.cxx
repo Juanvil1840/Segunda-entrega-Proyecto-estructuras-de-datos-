@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <limits>
 #include <queue>
+#include <iostream>
 
 Grafo::Grafo() {
     vertices.clear();
@@ -99,7 +100,7 @@ bool Grafo::insertarVertice(Base dato){
 
     vertices.push_back(dato);
 
-    double** nueva = new doible*[vertices.size()];
+    double** nueva = new double*[vertices.size()];
     for (std::size_t i = 0; i < vertices.size(); ++i) {
         nueva[i] = new double[vertices.size()];
     }
@@ -138,8 +139,8 @@ int Grafo::buscarVertice(Base dato){
 }
 
 int Grafo::buscarVertice(int i, int j){
-    for(std::size_t i = 0; i < vertices.size(); i++){
-	if((vertices[i].obteneri() == i) && (vertices[i].obtenerj() == j)) return (int)i;
+    for(std::size_t k = 0; k < vertices.size(); k++){
+	if((vertices[k].obteneri() == i) && (vertices[k].obtenerj() == j)) return (int)k;
     }   
 
     return -1; 
@@ -160,10 +161,10 @@ bool Grafo::eliminarVertice(Base dato){
 
     if (aristas != nullptr && vertices.size()-1 > 0) {
         for (std::size_t i = 0, ni = 0; i < vertices.size(); ++i) {
-            if (i == indice) continue;
+            if ((int)i == indice) continue;
 
             for (std::size_t j = 0, nj = 0; j < vertices.size(); ++j) {
-                if (j == indice) continue;
+                if ((int)j == indice) continue;
 
                 nueva[ni][nj] = aristas[i][j];
                 nj++;
@@ -263,7 +264,7 @@ bool Grafo::recorridoEnProfundidad(Base vertice, std::vector<Base>& visitados){
 
     // Recorrer los vecinos no visitados
     for (int idxVecino : vecinos) {
-        T vecino = vertices[idxVecino];
+        Base vecino = vertices[idxVecino];
         if (std::find(visitados.begin(), visitados.end(), vecino) == visitados.end()) {
             if (!recorridoEnProfundidad(vecino, visitados))
                 return false;
@@ -303,7 +304,7 @@ bool Grafo::recorridoEnAnchura(Base vInicial, std::vector<Base>& visitados){
 
         for (std::size_t i = 0; i < vecinos.size(); ++i) {
             int indiceVecino = vecinos[i];
-            T datoVecino = vertices[indiceVecino];
+            Base datoVecino = vertices[indiceVecino];
 
             if (std::find(visitados.begin(), visitados.end(), datoVecino) == visitados.end()) {
                 visitados.push_back(datoVecino);
@@ -363,7 +364,7 @@ std::vector<int> Grafo::rutaMasCorta(int inicio, int destino){
         // obtener lista de vecino de ind
 
         std::vector<int> vecinos;
-    	for (std::size_t j = 0; j < n; ++j) {
+    	for (int j = 0; j < n; ++j) {
             if (aristas[ind][j] != 0) {
                 vecinos.push_back((int)j);
             }

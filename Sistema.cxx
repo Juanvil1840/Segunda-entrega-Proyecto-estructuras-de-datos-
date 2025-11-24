@@ -8,6 +8,7 @@
 #include <cstdint> 
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 const std::vector<Comando>& Sistema :: ObtenerComandos() const{
     return( comandos );
@@ -122,8 +123,6 @@ void Sistema :: listar_secuencias(){
 	std::cout << "Hay " << this->ObtenerSecuencias().size() << " secuencias cargadas en memoria" << std::endl;
 	//Imprimir cuantas bases tiene cada secuencia
 	std::list<Secuencia>::iterator itS;
-	
-
 	for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
 	    int contBases = 0;
 	    std::map<char,int,orden>::const_iterator itM;
@@ -149,7 +148,7 @@ void Sistema :: histograma(std::string descripcion_secuencia){
     std::list<Secuencia>& secuencias = this->ObtenerSecuencias();
 
     if (secuencias.empty()) {
-        std::cout << "No hay secuencias cargadas en memoria.\n";
+      std::cout << "No hay secuencias cargadas en memoria.\n";
         return;
     }
 
@@ -602,7 +601,7 @@ void Sistema :: ruta_mas_corta(std::string descripcion_secuencia, int i, int j, 
         return;
     }
 
-    // Verificar que la posicion de la base origen sea valida
+    // Verificar que la posicion de la base destino sea valida
     if((x >= (int)matrizSecuencia.size()) || (y >= (int)matrizSecuencia[x].size())){
 	std::cout << "La base en la posicion [" << x << "," << y << "] no existe" << std::endl;
         return;
@@ -614,13 +613,13 @@ void Sistema :: ruta_mas_corta(std::string descripcion_secuencia, int i, int j, 
     //Obtener la ruta mas corta entre la base origen y la base destino
     int indiceBaseOrigen = grafoSecuencia.buscarVertice(i,j);
     int indiceBaseDestino = grafoSecuencia.buscarVertice(x,y);
-    std::vector<int> ruta = grafoSecuencia.rutaMasCorta(indiceBaseOrigen,indiceBaseDestino)
+    std::vector<int> ruta = grafoSecuencia.rutaMasCorta(indiceBaseOrigen,indiceBaseDestino);
     double costoRuta = grafoSecuencia.costoRuta(ruta);
 
-    std::cout << "Para la secuencia " << descripcion_secuencia << ", la ruta mas corta entre la base "<< matrizSecuencia[i][j] << "en [" << i << "," << j << "] y en la base "<< matrizSecuencia[x][y] << "en [" << x << "," << y << "] es:" << std::endl;
+    std::cout << "Para la secuencia " << descripcion_secuencia << ", la ruta mas corta entre la base "<< matrizSecuencia[i][j] << " en [" << i << "," << j << "] y en la base "<< matrizSecuencia[x][y] << " en [" << x << "," << y << "] es:" << std::endl;
 
-    for(std::size_t i = 0; i < ruta.size(); ++i){
-	std::cout << grafoSecuencia.obtenerBase(i) << " ";
+    for(std::size_t k = 0; k < ruta.size(); ++k){
+	std::cout << grafoSecuencia.obtenerBase(ruta[k]) << " ";
     }
  
     std::cout << std::endl;
@@ -629,10 +628,81 @@ void Sistema :: ruta_mas_corta(std::string descripcion_secuencia, int i, int j, 
 }
 
 //COMANDO BASE REMOTA
-void Sistema :: base_remota(std::string base_remota, int i, int j){
+void Sistema :: base_remota(std::string descripcion_secuencia, int i, int j){
+    Secuencia seq;
 
-    std::cout<<"Exito base_remota"<<base_remota<<" i= "<<i<<" j= "<<j<<"\n";
+    //Verificar que la secuencia con la descripcion dada exista
+    bool encontrado = false;
+    std::list<Secuencia>::iterator itS;
+    for(itS = this->ObtenerSecuencias().begin(); itS != this->ObtenerSecuencias().end(); itS ++){
+	if(itS->ObtenerDescripcion() == descripcion_secuencia){
+	    encontrado = true;
+	    seq = *itS;
+	    break;
+	}
+    }
 
+    if(!encontrado){
+	std::cout << "La secuencia " << descripcion_secuencia << " no existe" << std::endl;
+        return;
+    }
+
+    std::vector<std::string> matrizSecuencia = seq.ObtenerLineasSecuencia();   
+
+    // Verificar que la posicion de la base sea valida
+    if((i >= (int)matrizSecuencia.size()) || (j >= (int)matrizSecuencia[i].size())){
+	std::cout << "La base en la posicion [" << i << "," << j << "] no existe" << std::endl;
+        return;
+    }
+
+    // Obtener Grafo de la secuencia
+    Grafo grafoSecuencia = this->obtenerGrafoSecuencia(matrizSecuencia);
+
+    // Obtener los indices de todas las bases con la misma letra
+    int indiceBase = grafoSecuencia.buscarVertice(i,j);
+    std::vector<Base> vertices = grafoSecuencia.obtenerVertices();
+    char letra = vertices[indiceBase].obtenerCodigo();
+    std::vector<int> indicesConMismaLetra;
+    std::vector<double> pesosRutas;
+
+    for(std::size_t k = 0; k < vertices.size(); ++k){
+	if(((int)k != indiceBase) && (vertices[k].obtenerCodigo() == letra)){
+	    indicesConMismaLetra.push_back(k);
+
+	    std::vector<int> ruta = grafoSecuencia.rutaMasCorta(indiceBase,k);
+    	    double costo = grafoSecuencia.costoRuta(ruta);
+	    pesosRutas.push_back(costo);
+	}
+    }
+
+    // Verificar que se encontro al menos una base con la misma letra
+    if(indicesConMismaLetra.empty()){
+	std::cout << "No se encontro otra base " << letra << " diferente a la ubicada en la posicion (" << i << "," << j << ")"<< std::endl;
+        return;
+    }
+
+    // Obtener indice con el costo de ruta mas grande
+    double mayor = pesosRutas[0];
+    int indiceCostoso = indicesConMismaLetra[0];
+
+    for(std::size_t k = 1; k < indicesConMismaLetra.size(); ++k){
+	if(pesosRutas[k] > mayor){
+	    mayor = pesosRutas[k];
+	    indiceCostoso = indicesConMismaLetra[k];
+	}
+    }
+
+    std::vector<int> rutaBaseRemota = grafoSecuencia.rutaMasCorta(indiceBase,indiceCostoso);
+
+    std::cout << "Para la secuencia " << descripcion_secuencia << ", la base remota esta ubicada en [" << vertices[indiceCostoso].obteneri() << "," << vertices[indiceCostoso].obtenerj() << "] y la ruta entre la base [" << i << "," << j << "] y la base remota en [" << vertices[indiceCostoso].obteneri() << "," << vertices[indiceCostoso].obtenerj() << "] es: "<< std::endl;
+
+    for(std::size_t k = 0; k < rutaBaseRemota.size(); ++k){
+	std::cout << grafoSecuencia.obtenerBase(rutaBaseRemota[k]) << " ";
+    }
+ 
+    std::cout << std::endl;
+
+    std::cout << "El costo total de la ruta es: " << grafoSecuencia.costoRuta(rutaBaseRemota) << std::endl;
 }
 
 std :: vector<char> Sistema ::verificarCodigosValidos(const std::string& linea){
@@ -653,11 +723,8 @@ std :: vector<char> Sistema ::verificarCodigosValidos(const std::string& linea){
     return invalidos;
 }
 
-Grafo Sistema::obtenerGrafoSecuencia(Secuencia seq){
+Grafo Sistema::obtenerGrafoSecuencia(std::vector<std::string> matriz){
     Grafo grafoSecuencia;
-
-    //Extraer matriz de bases
-    std::vector<std::string> matriz = seq.ObtenerLineasSecuencia();
     
     //Insertar vertices
     for(std::size_t i = 0; i < matriz.size(); i++){

@@ -11,9 +11,9 @@ class Base {
     public:
 	Base();
 	Base(char ncodigo, int ni, int nj);
-	char obtenerCodigo();
-	int obteneri();
-	int obtenerj();
+	char obtenerCodigo() const;
+	int obteneri() const;
+	int obtenerj() const;
 	void fijarCodigo(char ncodigo);
 	void fijari(int ni);
 	void fijarj(int nj);
