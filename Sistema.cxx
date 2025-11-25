@@ -681,30 +681,70 @@ void Sistema :: base_remota(std::string descripcion_secuencia, int i, int j){
         return;
     }
 
-    // Obtener indice con el costo de ruta mas grande
+    // Buscar el costo maximo entre todas las rutas 
     double mayor = pesosRutas[0];
-    int indiceCostoso = indicesConMismaLetra[0];
-
-    for(std::size_t k = 1; k < indicesConMismaLetra.size(); ++k){
-	if(pesosRutas[k] > mayor){
-	    mayor = pesosRutas[k];
-	    indiceCostoso = indicesConMismaLetra[k];
-	}
+    for(std::size_t k = 1; k < pesosRutas.size(); ++k){
+        if(pesosRutas[k] > mayor){
+            mayor = pesosRutas[k];
+        }
     }
 
-    std::vector<int> rutaBaseRemota = grafoSecuencia.rutaMasCorta(indiceBase,indiceCostoso);
-
-    std::cout << "Para la secuencia " << descripcion_secuencia << ", la base remota esta ubicada en [" << vertices[indiceCostoso].obteneri() << "," << vertices[indiceCostoso].obtenerj() << "] y la ruta entre la base [" << i << "," << j << "] y la base remota en [" << vertices[indiceCostoso].obteneri() << "," << vertices[indiceCostoso].obtenerj() << "] es: "<< std::endl;
-
-    for(std::size_t k = 0; k < rutaBaseRemota.size(); ++k){
-	std::cout << grafoSecuencia.obtenerBase(rutaBaseRemota[k]) << " ";
+    //Encontrar todas las rutas que tengan es costo maximo
+    const double EPS = 1e-9;
+    std::vector<int> indicesRemotos;
+    for(std::size_t k = 0; k < pesosRutas.size(); ++k){
+        if (std::fabs(pesosRutas[k] - mayor) < EPS) {
+            indicesRemotos.push_back(indicesConMismaLetra[k]);
+        }
     }
- 
-    std::cout << std::endl;
 
-    std::cout << "El costo total de la ruta es: " << grafoSecuencia.costoRuta(rutaBaseRemota) << std::endl;
+    // Imprimir resultados
+    if(indicesRemotos.size() == 1){
+        int idxRemoto = indicesRemotos[0];
+        std::vector<int> rutaBaseRemota = grafoSecuencia.rutaMasCorta(indiceBase, idxRemoto);
+
+        std::cout << "En la secuencia " << descripcion_secuencia 
+		  << " para la base ubicada en la posicion ["
+		  << i << "," << j << "]"
+                  << ", su base remota esta ubicada en [" 
+                  << vertices[idxRemoto].obteneri() << "," 
+                  << vertices[idxRemoto].obtenerj() << "] y la ruta entre la base [" 
+                  << i << "," << j << "] y la base remota en [" 
+                  << vertices[idxRemoto].obteneri() << "," 
+                  << vertices[idxRemoto].obtenerj() << "] es:" << std::endl;
+
+        for(std::size_t k = 0; k < rutaBaseRemota.size(); ++k){
+            std::cout << grafoSecuencia.obtenerBase(rutaBaseRemota[k]) << " ";
+        }
+        std::cout << std::endl;
+        std::cout << "El costo total de la ruta es: " 
+                  << grafoSecuencia.costoRuta(rutaBaseRemota) << std::endl;
+    } else {
+        std::cout << "En la secuencia " << descripcion_secuencia 
+		  << " para la base ubicada en la posicion ["
+		  << i << "," << j << "]"
+                  << ", se encontraron " << indicesRemotos.size() 
+                  << " bases remotas a una distancia de "
+                  << mayor << std::endl;
+
+        for (std::size_t r = 0; r < indicesRemotos.size(); ++r) {
+            int idxRemoto = indicesRemotos[r];
+            std::vector<int> rutaBaseRemota = grafoSecuencia.rutaMasCorta(indiceBase, idxRemoto);
+
+            std::cout << (r + 1) << ". Base " 
+                      << vertices[idxRemoto].obtenerCodigo() 
+                      << " en [" << vertices[idxRemoto].obteneri()
+                      << "," << vertices[idxRemoto].obtenerj() << "]" 
+                      << std::endl;
+
+            std::cout << "   Ruta: ";
+            for (std::size_t k = 0; k < rutaBaseRemota.size(); ++k) {
+                std::cout << grafoSecuencia.obtenerBase(rutaBaseRemota[k]) << " ";
+            }
+            std::cout << std::endl;
+        }
+    }
 }
-
 std :: vector<char> Sistema ::verificarCodigosValidos(const std::string& linea){
     const std :: string permitidos = "ACGTURYKMSWBDHVNX-"; //cadena de caracteres que define los codigos permitidos
     std :: vector<char> invalidos; //vector que guarda todos los caracteres invalidos encontrados

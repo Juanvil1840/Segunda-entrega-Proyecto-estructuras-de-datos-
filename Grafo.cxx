@@ -373,13 +373,27 @@ std::vector<int> Grafo::rutaMasCorta(int inicio, int destino){
         for(std::size_t j = 0; j < vecinos.size(); ++j){
             int v = vecinos[j];
             double weight = aristas[ind][v];
-            if(!S[v] && dist[ind] + weight < dist[v]){ // si el nodo no ha sido visitado y la distancia más el peso de la conexión es menor a la distancia actual para ese nodo 
-                dist[v] = dist[ind] + weight;
-                pred[v] = ind;  
-            }
+
+	    if(!S[v]) {
+		double nuevaDist = dist[ind] + weight;
+
+		if (nuevaDist < dist[v]) {
+            	    dist[v] = nuevaDist;
+            	    pred[v] = ind;
+        	}else if (std::abs(nuevaDist - dist[v]) < 1e-9) {
+		    if (pred[v] == -1) {
+                	pred[v] = ind;
+            	    } else {
+                	int fila_actual = vertices[pred[v]].obteneri();
+                	int fila_nueva  = vertices[ind].obteneri();
+
+                	if (fila_nueva < fila_actual) {
+                    	    pred[v] = ind;
+                	}
+            	    }
+        	}
+	    }
         }
-
-
     }
 
     //reconstruir el camino desde el destino hacía atrás 

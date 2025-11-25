@@ -22,7 +22,7 @@ class Base {
 	double pesoConexion(Base b);
 
 	friend std::ostream& operator<<(std::ostream& os, const Base& b){
-    	    os << b.codigo << ": (" << b.i << "," << b.j << ")";
+    	    os << b.codigo << ":[" << b.i << "," << b.j << "]";
     	    return os;
 	}
 };
