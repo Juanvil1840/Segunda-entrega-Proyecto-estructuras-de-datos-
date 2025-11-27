@@ -440,7 +440,7 @@ for (int j = 0; j < (int)bits.size(); j += 8) {
     unsigned char c = static_cast<unsigned char>(byte.to_ulong());
     archivo.write(reinterpret_cast<char*>(&c), 1);
     std::bitset<8> bitsMostrados(c);
-    std::cout << bitsMostrados;
+    //std::cout << bitsMostrados;
 }
 
 
