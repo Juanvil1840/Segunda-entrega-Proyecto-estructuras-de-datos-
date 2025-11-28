@@ -765,7 +765,7 @@ void Sistema :: decodificar(std::string nombre_archivo){
             archivo.close();
             return;
         }
-        std::string descripcion =  + nombre;
+        std::string descripcion =  nombre;
 
         //  Leer w (Longitud en bits)
         if (!archivo.read(reinterpret_cast<char*>(&w), sizeof(uint64_t)) || w == 0) {
