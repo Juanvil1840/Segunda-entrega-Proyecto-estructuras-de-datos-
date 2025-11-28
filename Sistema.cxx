@@ -338,7 +338,9 @@ void Sistema :: guardar(std::string nombre_archivo){
     }
 }
 
-//COMANDO CODIFICAR
+
+
+/*COMANDO CODIFICAR
 void Sistema :: codificar(std::string nombre_archivo){
 
  if(secuencias.empty()){
@@ -449,9 +451,119 @@ for (int j = 0; j < (int)bits.size(); j += 8) {
   archivo.close();
   std::cout << "\nSecuencias codificadas y almacenadas en " << nombre_archivo << std::endl;
 }
+*/
 
+//COMANDO CODIFICAR
+void Sistema :: codificar(std::string nombre_archivo){
 
-// COMANDO DECODIFICAR
+    if(secuencias.empty()){
+        std::cout << "No hay secuencias cargadas en memoria.\n";
+        return;
+    };
+
+    // La frecuencia total de todas las bases se sigue almacenando en un mapa <char, int> 
+    // para ser compatible con la definición de su clase ArbolCod/NodoCod.
+    std::map<char, int> frecuencias; 
+    std::list<Secuencia>::iterator itS; 
+    
+    // 1. Calcular frecuencias totales de todas las secuencias
+    for (itS = secuencias.begin(); itS != secuencias.end(); ++itS) { 
+        std::vector<std::string>& lineas = itS->ObtenerLineasSecuencia(); 
+        for (int i = 0; i < (int)lineas.size(); i++) {
+            std::string linea = lineas[i];
+            for (int j = 0; j < (int)linea.size(); j++) { 
+                char c = linea[j];
+                frecuencias[c]++;
+            }
+        }
+    }
+
+    // 2. Creación del árbol de Huffman
+    ArbolCod arbol;
+    arbol.Huffman(frecuencias);
+
+    // 3. Apertura y validación del archivo binario
+    std::ofstream archivo(nombre_archivo.c_str(), std::ios::binary);
+    if(!archivo.is_open()){
+        std::cout<<"No se pueden guardar las secuencias cargadas en "<<nombre_archivo<<"\n";
+        return;
+    }
+
+    // ESTRUCTURA DEL ARCHIVO .FABIN (Orden de escritura)
+    
+    // a. n: cantidad de bases diferentes (short)
+    short n = (short)frecuencias.size();
+    archivo.write((char*)&n, sizeof(short));
+
+    // b. Tabla de Frecuencias (char c, int f)
+    std::map<char, int>::iterator itF;
+    for(itF = frecuencias.begin(); itF != frecuencias.end(); ++itF){
+        char c = itF->first;
+        // CORRECCIÓN CLAVE: Escribir la frecuencia como 'int' (4 bytes)
+        // para asegurar que el decodificador lea 4 bytes.
+        int f = itF->second; 
+        archivo.write(reinterpret_cast<char*>(&c), sizeof(char));
+        archivo.write(reinterpret_cast<char*>(&f), sizeof(int)); // **¡CAMBIO AQUÍ!**
+    }
+
+    // c. ns: cantidad de secuencias (uint32_t)
+    uint32_t ns = static_cast<uint32_t>(secuencias.size());
+    archivo.write(reinterpret_cast<char*>(&ns), sizeof(uint32_t));
+
+    // d. Datos de cada secuencia
+    for (itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
+        
+        // i. l y s (Longitud y Nombre de la secuencia)
+        std::string nombre = itS->ObtenerDescripcion();
+        if(!nombre.empty() && nombre[0] == '>'){
+            nombre = nombre.substr(1);
+        }
+
+        short l = (short)nombre.size();
+        archivo.write((char*)&l, sizeof(short));
+        archivo.write(nombre.c_str(), l);
+
+        // ii. Concatenar las bases
+        std::vector<std::string>& lineas = itS->ObtenerLineasSecuencia();
+        std::string bases;
+        for (int i = 0; i < (int)lineas.size(); i++) {
+            bases += lineas[i];
+        }
+
+        // iii. Codificar las bases con Huffman
+        std::string bits = arbol.codificacion(bases);
+
+        // iv. wi: Longitud de la secuencia EN BITS (antes de padding, uint64_t)
+        uint64_t w = static_cast<uint64_t>(bits.size());
+
+        // Rellenar hasta múltiplo de 8 bits para escribir bytes
+        while (bits.size() % 8 != 0) {
+            bits += '0';
+        }
+
+        archivo.write(reinterpret_cast<char*>(&w), sizeof(uint64_t));
+
+        // v. x: Ancho de linea (short)
+        short x = 0;
+        if (!lineas.empty()) {
+            x = static_cast<short>(lineas[0].size());
+        }
+        archivo.write(reinterpret_cast<char*>(&x), sizeof(short));
+
+        // vi. binary_code: escribir los bits como bytes
+        for (int j = 0; j < (int)bits.size(); j += 8) {
+            std::string byteStr = bits.substr(j, 8);
+            std::bitset<8> byte(byteStr);
+            unsigned char c = static_cast<unsigned char>(byte.to_ulong());
+            archivo.write(reinterpret_cast<char*>(&c), 1);
+        }
+    }
+
+    archivo.close();
+    std::cout << "\nSecuencias codificadas y almacenadas en " << nombre_archivo << std::endl;
+}
+
+/*COMANDO DECODIFICAR
 void Sistema::decodificar(std::string nombre_archivo) {
     std::ifstream fin(nombre_archivo, std::ios::binary);
     if (!fin.is_open()) {
@@ -572,6 +684,161 @@ void Sistema::decodificar(std::string nombre_archivo) {
         return;
     }
 }
+*/
+
+//COMANDO DECODIFICAR
+void Sistema :: decodificar(std::string nombre_archivo){
+    // 1. Apertura y validación del archivo binario
+    std::ifstream archivo(nombre_archivo.c_str(), std::ios::binary);
+
+    if(!archivo.is_open()){
+        std::cout << "No se puede abrir el archivo " << nombre_archivo << ".\n";
+        return;
+    }
+
+    // LISTA TEMPORAL PARA LAS SECUENCIAS DECODIFICADAS
+    std::list<Secuencia> secuencias_decodificadas;
+    
+    // VARIABLES DE METADATOS GLOBALES
+    short n = 0; // Cantidad de símbolos (bases) diferentes
+    uint32_t ns = 0; // Cantidad de secuencias
+    std::map<char, int> frecuencias; // Mapa para reconstruir el árbol
+
+    // --- LECTURA DE METADATOS GLOBALES ---
+
+    // 1. Leer n (short, 2 bytes)
+    if (!archivo.read(reinterpret_cast<char*>(&n), sizeof(short)) || n <= 0) {
+        std::cout << "Error: Archivo binario inválido o dañado (al leer n).\n";
+        archivo.close();
+        return;
+    }
+
+    // 2. Leer Tabla de Frecuencias (n veces: char c, int f)
+    for (int i = 0; i < n; ++i) {
+        char c;
+        int f; // Se lee como int (4 bytes)
+        
+        if (!archivo.read(reinterpret_cast<char*>(&c), sizeof(char))) {
+             std::cout << "Error: Archivo binario inválido o dañado (al leer código).\n";
+             archivo.close();
+             return;
+        }
+        
+        // CORRECCIÓN CLAVE: Leer la frecuencia como 'int' (4 bytes)
+        if (!archivo.read(reinterpret_cast<char*>(&f), sizeof(int))) { 
+            std::cout << "Error: Archivo binario inválido o dañado (al leer frecuencia).\n";
+            archivo.close();
+            return;
+        }
+        
+        frecuencias[c] = f;
+    }
+
+    // 3. Leer ns (cantidad de secuencias, uint32_t, 4 bytes)
+    if (!archivo.read(reinterpret_cast<char*>(&ns), sizeof(uint32_t))) {
+        std::cout << "Error: Archivo binario inválido o dañado (al leer ns).\n";
+        archivo.close();
+        return;
+    }
+    
+    // 4. Reconstrucción del árbol de Huffman
+    ArbolCod arbol;
+    arbol.Huffman(frecuencias);
+    
+    // --- LECTURA Y DECODIFICACIÓN DE CADA SECUENCIA ---
+
+    for (uint32_t i = 0; i < ns; ++i) {
+        short l = 0;       // Longitud del nombre (short)
+        uint64_t w = 0;    // Longitud de la secuencia EN BITS (uint64_t)
+        short x = 0;       // Ancho de línea (short)
+
+        // i. Leer l (longitud del nombre)
+        if (!archivo.read(reinterpret_cast<char*>(&l), sizeof(short)) || l <= 0) {
+            std::cout << "Error: Archivo incompleto o dañado (al leer longitud del nombre).\n";
+            archivo.close();
+            return;
+        }
+
+        // ii. Leer s (Nombre de la secuencia)
+        std::string nombre(l, ' ');
+        if (!archivo.read(&nombre[0], l)) {
+            std::cout << "Error: Archivo incompleto o dañado (al leer nombre).\n";
+            archivo.close();
+            return;
+        }
+        std::string descripcion = ">" + nombre;
+
+        // iii. Leer w (Longitud en bits)
+        if (!archivo.read(reinterpret_cast<char*>(&w), sizeof(uint64_t)) || w == 0) {
+            std::cout << "Error: Archivo incompleto o dañado (al leer longitud en bits).\n";
+            archivo.close();
+            return;
+        }
+        
+        // iv. Leer x (Ancho de línea)
+        if (!archivo.read(reinterpret_cast<char*>(&x), sizeof(short))) {
+            std::cout << "Error: Archivo incompleto o dañado (al leer ancho de línea).\n";
+            archivo.close();
+            return;
+        }
+
+        // v. Leer y decodificar el Código Binario (binary_code)
+        uint64_t bytes_a_leer = (w + 7) / 8; // Número de bytes que contiene los w bits
+        std::string bits_codificados;
+        
+        for (uint64_t j = 0; j < bytes_a_leer; ++j) {
+            unsigned char byte_leido;
+            if (!archivo.read(reinterpret_cast<char*>(&byte_leido), 1)) {
+                std::cout << "Error: Archivo incompleto o dañado (al leer código binario).\n";
+                archivo.close();
+                return;
+            }
+            std::bitset<8> bits_byte(byte_leido);
+            bits_codificados += bits_byte.to_string();
+        }
+        
+        // Truncar los bits al tamaño original w (eliminar padding)
+        bits_codificados.resize(w); 
+
+        // Decodificación
+        std::string bases_decodificadas = arbol.decodificacion(bits_codificados);
+
+        // vi. Reconstruir la Secuencia
+        Secuencia nueva_secuencia;
+        nueva_secuencia.FijarDescripcion(descripcion);
+
+        // Reconstruir las líneas de secuencia usando el ancho x
+        std::vector<std::string> lineas_reconstruidas;
+        if (x > 0) {
+            for (size_t k = 0; k < bases_decodificadas.length(); k += x) {
+                lineas_reconstruidas.push_back(bases_decodificadas.substr(k, x));
+            }
+        } else {
+            // Caso borde: si x=0 (aunque se espera x>0), se pone toda la secuencia en una línea
+            lineas_reconstruidas.push_back(bases_decodificadas);
+        }
+        
+        nueva_secuencia.FijarLineasSecuencia(lineas_reconstruidas);
+        secuencias_decodificadas.push_back(nueva_secuencia);
+    }
+
+    archivo.close();
+    
+    // 5. Carga en memoria y Actualización final
+    this->FijarSecuencias(secuencias_decodificadas);
+    
+    std::list<Secuencia>::iterator itS;
+    for (itS = secuencias.begin(); itS != secuencias.end(); ++itS) {
+        itS->EstablecerCodigosYFrecuencias();
+        // Nota: Si existe OrdenarCodigosYBases() también debe invocarse aquí
+    }
+
+    std::cout << "Decodificación completada. Se cargaron " << ns << " secuencias en memoria.\n";
+}
+
+
+
+
 
 //COMANDO RUTA_MAS_CORTA
 void Sistema :: ruta_mas_corta(std::string descripcion_secuencia, int i, int j, int x, int y){
